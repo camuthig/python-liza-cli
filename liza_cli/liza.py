@@ -34,6 +34,15 @@ def credentials(username: str, token: str):
     typer.secho('Token saved', fg=typer.colors.GREEN)
 
 
+@app.command()
+def reset():
+    delete = typer.confirm('This will delete all data. Are you sure?')
+    if delete:
+        state.config_file.unlink()
+
+        typer.secho('Reset all data.', fg=typer.colors.GREEN)
+
+
 @app.callback()
 def main(config: Path = typer.Option(default=Path(Path.home(), '.liza'))):
     if not config.exists():
