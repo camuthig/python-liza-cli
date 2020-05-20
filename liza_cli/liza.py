@@ -1,11 +1,11 @@
-import io
 import json
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict
 
 import typer
+
+from liza_cli import bitbucket
 
 app = typer.Typer()
 
@@ -20,21 +20,27 @@ state = State()
 
 
 @app.command()
-def token(t: str = typer.Argument(..., metavar='token')):
-    state.config['token'] = t
+def credentials(username: str, token: str):
+    if not bitbucket.test_token(username, token):
+        typer.secho('Invalid login credentials', fg=typer.colors.RED)
+        return
 
-    with open(state.config_file, 'w') as f:
+    state.config['token'] = token
+    state.config['username'] = username
+
+    with state.config_file.open('w') as f:
         f.write(json.dumps(state.config, indent=4, sort_keys=True))
+
     typer.secho('Token saved', fg=typer.colors.GREEN)
 
 
 @app.callback()
 def main(config: Path = typer.Option(default=Path(Path.home(), '.liza'))):
     if not config.exists():
-        with open(config, 'w') as f:
+        with config.open('w') as f:
             f.write("{}")
 
-    with open(config, 'r') as f:
+    with config.open('r') as f:
         content = f.read()
 
     state.config = json.loads(content)

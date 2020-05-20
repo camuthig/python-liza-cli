@@ -8,6 +8,7 @@ license = "MIT"
 [tool.poetry.dependencies]
 python = "^3.8"
 typer-cli = "^0.0.9"
+httpx = "^0.12.1"
 
 [tool.poetry.dev-dependencies]
 
