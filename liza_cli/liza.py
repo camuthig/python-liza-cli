@@ -35,19 +35,17 @@ state = State()
 
 
 def not_logged_in():
-    typer.secho('You must configure credentials first.', fg=typer.colors.RED, err=True)
+    typer.secho("You must configure credentials first.", fg=typer.colors.RED, err=True)
     return 1
 
 
 def write_config():
-    with state.config_file.open('w') as f:
+    with state.config_file.open("w") as f:
         f.write(state.config.json(indent=4, sort_keys=True))
 
 
 def create_default_config():
-    state.config = Config(
-        repositories={},
-    )
+    state.config = Config(repositories={},)
 
     write_config()
 
@@ -56,7 +54,7 @@ def create_default_config():
 def credentials(username: str, token: str):
     client = BitBucket(username, token)
     if not client.test_token():
-        typer.secho('Invalid login credentials', fg=typer.colors.RED)
+        typer.secho("Invalid login credentials", fg=typer.colors.RED)
         return
 
     state.config.token = token
@@ -64,16 +62,16 @@ def credentials(username: str, token: str):
 
     write_config()
 
-    typer.secho('Token saved', fg=typer.colors.GREEN)
+    typer.secho("Token saved", fg=typer.colors.GREEN)
 
 
 @app.command()
 def reset():
-    delete = typer.confirm('This will delete all data. Are you sure?')
+    delete = typer.confirm("This will delete all data. Are you sure?")
     if delete:
         state.config_file.unlink()
 
-        typer.secho('Reset all data.', fg=typer.colors.GREEN)
+        typer.secho("Reset all data.", fg=typer.colors.GREEN)
 
 
 @app.command()
@@ -90,20 +88,18 @@ def watch(workspace: str, name: str):
     repository = state.client.get_repository(workspace, name)
 
     r = Repository(
-        name=repository['full_name'],
-        uuid=repository['uuid'],
-        last_read=datetime.now(),
+        name=repository["full_name"], uuid=repository["uuid"], last_read=datetime.now(),
     )
 
     if r.name in state.config.repositories.keys():
-        typer.secho(f'You are already watching {workspace}/{name}')
+        typer.secho(f"You are already watching {workspace}/{name}")
         return
 
     state.config.repositories[r.name] = r
 
     write_config()
 
-    typer.secho(f'You are now watching {workspace}/{name}', fg=typer.colors.GREEN)
+    typer.secho(f"You are now watching {workspace}/{name}", fg=typer.colors.GREEN)
 
 
 @app.command()
@@ -111,21 +107,21 @@ def unwatch(workspace: str, name: str):
     if not state.client:
         return not_logged_in()
 
-    full_name = f'{workspace}/{name}'
+    full_name = f"{workspace}/{name}"
 
     if full_name not in state.config.repositories.keys():
-        typer.secho(f'You are not watching {workspace}/{name}')
+        typer.secho(f"You are not watching {workspace}/{name}")
         return
 
     del state.config.repositories[full_name]
 
     write_config()
 
-    typer.secho(f'You are no longer watching {workspace}/{name}', fg=typer.colors.GREEN)
+    typer.secho(f"You are no longer watching {workspace}/{name}", fg=typer.colors.GREEN)
 
 
 @app.callback()
-def main(config: Path = typer.Option(default=Path(Path.home(), '.liza'))):
+def main(config: Path = typer.Option(default=Path(Path.home(), ".liza"))):
     state.config_file = config
     if not config.exists():
         create_default_config()
