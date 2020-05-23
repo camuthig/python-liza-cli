@@ -13,7 +13,8 @@ app = typer.Typer()
 
 
 class Repository(BaseModel):
-    uuid: str
+    id: int
+    has_updates: bool = False
     last_read: datetime
     name: str
 
@@ -21,6 +22,7 @@ class Repository(BaseModel):
 class Config(BaseModel):
     token: Optional[str]
     username: Optional[str]
+    user_uuid: Optional[str]
     repositories: Dict[str, Repository]
 
 
@@ -52,11 +54,13 @@ def create_default_config():
 
 @app.command()
 def credentials(username: str, token: str):
-    client = BitBucket(username, token)
-    if not client.test_token():
+    client = BitBucket(username, token, user_uuid=None)
+    user = client.get_user()
+    if user is None:
         typer.secho("Invalid login credentials", fg=typer.colors.RED)
         return
 
+    state.config.user_uuid = user['uuid']
     state.config.token = token
     state.config.username = username
 
@@ -88,7 +92,7 @@ def watch(workspace: str, name: str):
     repository = state.client.get_repository(workspace, name)
 
     r = Repository(
-        name=repository["full_name"], uuid=repository["uuid"], last_read=datetime.now(),
+        name=repository["full_name"], id=repository["id"], last_read=datetime.now(),
     )
 
     if r.name in state.config.repositories.keys():
@@ -120,6 +124,35 @@ def unwatch(workspace: str, name: str):
     typer.secho(f"You are no longer watching {workspace}/{name}", fg=typer.colors.GREEN)
 
 
+@app.command()
+def update():
+    if not state.client:
+        return not_logged_in()
+
+    date_keys = {
+        "update": "date",
+        "comment": "created_on",
+        "approval": "date",
+    }
+    for repository in state.config.repositories.values():
+        activities = state.client.get_pull_request_activity(*repository.name.split('/'), repository["id"])
+        for activity in activities:
+            data = activity.values().pop()
+            activity_type = activity.keys().pop()
+
+            date_of_activity = datetime.fromisoformat(data[date_keys[activity_type]])
+
+            if date_of_activity < repository.last_read:
+                break;
+
+            if date_of_activity > repository.last_read:
+                repository.has_updates = True
+
+        repository.last_read = datetime.now()
+
+    write_config()
+
+
 @app.callback()
 def main(config: Path = typer.Option(default=Path(Path.home(), ".liza"))):
     state.config_file = config
@@ -130,7 +163,7 @@ def main(config: Path = typer.Option(default=Path(Path.home(), ".liza"))):
     state.config_file = config
 
     if state.config.username and state.config.token:
-        state.client = BitBucket(state.config.username, state.config.token)
+        state.client = BitBucket(state.config.username, state.config.token, state.config.user_uuid)
 
 
 if __name__ == "__main__":
