@@ -1,29 +1,15 @@
 from __future__ import annotations
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Any
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from pydantic import BaseModel
 
 import typer
 
 from liza_cli.bitbucket import BitBucket
+from liza_cli.config import Config, Repository, PullRequest, User, Update, ActivityType
 
 app = typer.Typer()
-
-
-class Repository(BaseModel):
-    id: int
-    has_updates: bool = False
-    last_read: datetime
-    name: str
-
-
-class Config(BaseModel):
-    token: Optional[str]
-    username: Optional[str]
-    user_uuid: Optional[str]
-    repositories: Dict[str, Repository]
 
 
 @dataclass
@@ -92,12 +78,17 @@ def watch(workspace: str, name: str):
     repository = state.client.get_repository(workspace, name)
 
     r = Repository(
-        name=repository["full_name"], id=repository["id"], last_read=datetime.now(),
+        name=repository["full_name"], uuid=repository["uuid"], last_read=datetime.now(),
     )
 
     if r.name in state.config.repositories.keys():
         typer.secho(f"You are already watching {workspace}/{name}")
         return
+
+    pull_request_page = state.client.get_assigned_pull_requests(workspace, name)
+    for pull_request in pull_request_page["values"]:
+        p = PullRequest.parse_obj(pull_request)
+        r.pull_requests[p.id] = p
 
     state.config.repositories[r.name] = r
 
@@ -124,31 +115,58 @@ def unwatch(workspace: str, name: str):
     typer.secho(f"You are no longer watching {workspace}/{name}", fg=typer.colors.GREEN)
 
 
+def update_pull_requests(repository: Repository):
+    date_keys = {
+        "approval": "date",
+        "comment": "created_on",
+        "update": "date",
+    }
+
+    user_keys = {
+        "approval": "user",
+        "comment": "user",
+        "update": "author",
+    }
+    for pull_request in repository.pull_requests.values():
+        page = state.client.get_pull_request_activity(*repository.name.split("/"), pull_request.id)
+        activities: List[Dict[str, Any]] = page["values"]
+        updates: List[Update] = []
+        for activity in activities:
+            activity_type = list(activity.keys())[0]
+            data = activity[activity_type]
+
+            date_of_activity = datetime.fromisoformat(data[date_keys[activity_type]])
+
+            if date_of_activity < pull_request.last_read:
+                break
+
+            update_author = User.parse_obj(data[user_keys[activity_type]])
+            if update_author.uuid == state.config.user_uuid:
+                # Ignore updates from ourselves
+                continue
+
+            if not pull_request.is_authored_by(state.config.user_uuid) and activity_type == "approval":
+                # Ignore approvals if we are only a reviewer on the PR
+                continue
+
+            updates.append(
+                Update(date=date_of_activity, activity_type=ActivityType(activity_type), author=update_author)
+            )
+            pull_request.has_updates = True
+
+        pull_request.updates = updates
+        pull_request.mark_read()
+
+
 @app.command()
 def update():
     if not state.client:
         return not_logged_in()
 
-    date_keys = {
-        "update": "date",
-        "comment": "created_on",
-        "approval": "date",
-    }
     for repository in state.config.repositories.values():
-        activities = state.client.get_pull_request_activity(*repository.name.split('/'), repository["id"])
-        for activity in activities:
-            data = activity.values().pop()
-            activity_type = activity.keys().pop()
+        update_pull_requests(repository)
 
-            date_of_activity = datetime.fromisoformat(data[date_keys[activity_type]])
-
-            if date_of_activity < repository.last_read:
-                break;
-
-            if date_of_activity > repository.last_read:
-                repository.has_updates = True
-
-        repository.last_read = datetime.now()
+    typer.secho("Update complete", fg=typer.colors.GREEN)
 
     write_config()
 

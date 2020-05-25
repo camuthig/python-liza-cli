@@ -29,8 +29,8 @@ class BitBucket:
 
         return json.loads(response.content)
 
-    def get_pull_requests(self, workspace: str, name: str) -> Dict:
-        # query = q=state%3D%22OPEN%22%20AND%20reviewers.uuid%3D%22%7Bac5bf988-50ef-478a-844c-e791cef46b65%7D%22&page=1
+    def get_assigned_pull_requests(self, workspace: str, name: str) -> Dict:
+        # WIP Implement pagination
         params = {
             "pagelen": 25,
             "q": f'state="OPEN" AND reviewers.uuid="{self.user_uuid}"',
@@ -38,13 +38,10 @@ class BitBucket:
         }
         response = self._get(f"/repositories/{workspace}/{name}/pullrequests", params=params)
 
-        print(response.content)
-
         return json.loads(response.content)
 
-    def get_pull_request_activity(self, workspace: str, name: str, id: str) -> Dict:
+    def get_pull_request_activity(self, workspace: str, name: str, id: int) -> Dict:
+        # WIP Implement pagination
         response = self._get(f"/repositories/{workspace}/{name}/pullrequests/{id}/activity")
-
-        print(response.content)
 
         return json.loads(response.content)
