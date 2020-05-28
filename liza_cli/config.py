@@ -10,9 +10,9 @@ class Link(BaseModel):
 
 
 class ActivityType(str, Enum):
-    APPROVAL = 'approval'
-    COMMENT = 'comment'
-    UPDATE = 'update'
+    APPROVAL = "approval"
+    COMMENT = "comment"
+    UPDATE = "update"
 
 
 class User(BaseModel):

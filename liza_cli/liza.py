@@ -49,7 +49,7 @@ def credentials(username: str, token: str):
         typer.secho("Invalid login credentials", fg=typer.colors.RED)
         return
 
-    state.config.user_uuid = user['uuid']
+    state.config.user_uuid = user["uuid"]
     state.config.token = token
     state.config.username = username
 
@@ -131,7 +131,9 @@ def update_pull_requests(repository: Repository):
         "update": "author",
     }
     for pull_request in repository.pull_requests.values():
-        page = state.client.get_pull_request_activity(*repository.name.split("/"), pull_request.id)
+        page = state.client.get_pull_request_activity(
+            *repository.name.split("/"), pull_request.id
+        )
         activities: List[Dict[str, Any]] = page["values"]
         updates: List[Update] = []
         for activity in activities:
@@ -148,12 +150,19 @@ def update_pull_requests(repository: Repository):
                 # Ignore updates from ourselves
                 continue
 
-            if not pull_request.is_authored_by(state.config.user_uuid) and activity_type == "approval":
+            if (
+                not pull_request.is_authored_by(state.config.user_uuid)
+                and activity_type == "approval"
+            ):
                 # Ignore approvals if we are only a reviewer on the PR
                 continue
 
             updates.append(
-                Update(date=date_of_activity, activity_type=ActivityType(activity_type), author=update_author)
+                Update(
+                    date=date_of_activity,
+                    activity_type=ActivityType(activity_type),
+                    author=update_author,
+                )
             )
             pull_request.has_updates = True
 
@@ -175,9 +184,9 @@ def update():
 
 
 class Format(str, Enum):
-    JSON = 'json'
-    PLAIN = 'plain'
-    TABLE = 'table'
+    JSON = "json"
+    PLAIN = "plain"
+    TABLE = "table"
 
 
 @app.command()
@@ -216,7 +225,9 @@ def main(config: Path = typer.Option(default=Path(Path.home(), ".liza"))):
     state.config_file = config
 
     if state.config.username and state.config.token:
-        state.client = BitBucket(state.config.username, state.config.token, state.config.user_uuid)
+        state.client = BitBucket(
+            state.config.username, state.config.token, state.config.user_uuid
+        )
 
 
 if __name__ == "__main__":

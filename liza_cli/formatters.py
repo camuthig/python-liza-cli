@@ -10,7 +10,6 @@ from liza_cli.config import Repository
 
 
 class Formatter(metaclass=abc.ABCMeta):
-
     @abc.abstractmethod
     def format_updates(self, repositories: List[Repository]):
         raise NotImplementedError
@@ -24,21 +23,23 @@ class TabulatorFormatter(Formatter, metaclass=abc.ABCMeta):
                 if len(pull_request.updates) == 0:
                     continue
 
-                workspace, name = repository.name.split('/')
+                workspace, name = repository.name.split("/")
 
                 title = pull_request.title
                 if len(title) > 35:
-                    title = title[:35] + '...'
+                    title = title[:35] + "..."
 
                 # WIP capture the link for each pull request
-                data.append([workspace, name, title, len(pull_request.updates), ''])
+                data.append([workspace, name, title, len(pull_request.updates), ""])
 
         return data
 
 
 class PlainFormatter(TabulatorFormatter):
     def format_updates(self, repositories: List[Repository]):
-        typer.secho(tabulate(tabular_data=self.get_data(repositories), tablefmt='plain'))
+        typer.secho(
+            tabulate(tabular_data=self.get_data(repositories), tablefmt="plain")
+        )
 
 
 class TableFormatter(TabulatorFormatter):
@@ -48,7 +49,11 @@ class TableFormatter(TabulatorFormatter):
 
     def format_updates(self, repositories: List[Repository]):
         typer.secho(
-            tabulate(tabular_data=self.get_data(repositories), headers=self._print_updates_header(), tablefmt="github")
+            tabulate(
+                tabular_data=self.get_data(repositories),
+                headers=self._print_updates_header(),
+                tablefmt="github",
+            )
         )
 
 
@@ -61,7 +66,7 @@ class JsonFormatter(Formatter):
                 if len(pull_request.updates) == 0:
                     continue
 
-                workspace, name = repository.name.split('/')
+                workspace, name = repository.name.split("/")
 
                 title = pull_request.title
 
@@ -71,7 +76,7 @@ class JsonFormatter(Formatter):
                     "name": name,
                     "pull_request": title,
                     "number_of_updates": len(pull_request.updates),
-                    "link": ""
+                    "link": "",
                 }
                 data.append(datum)
 

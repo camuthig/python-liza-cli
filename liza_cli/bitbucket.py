@@ -14,7 +14,11 @@ class BitBucket:
     endpoint = "https://api.bitbucket.org/2.0"
 
     def _get(self, path: str, params: Dict = None):
-        return httpx.get(f"{self.endpoint}{path}", auth=(self.username, self.token), params=params or {})
+        return httpx.get(
+            f"{self.endpoint}{path}",
+            auth=(self.username, self.token),
+            params=params or {},
+        )
 
     def get_user(self) -> Optional[Dict]:
         response = self._get("/user")
@@ -36,12 +40,16 @@ class BitBucket:
             "q": f'state="OPEN" AND reviewers.uuid="{self.user_uuid}"',
             "state": "OPEN",
         }
-        response = self._get(f"/repositories/{workspace}/{name}/pullrequests", params=params)
+        response = self._get(
+            f"/repositories/{workspace}/{name}/pullrequests", params=params
+        )
 
         return json.loads(response.content)
 
     def get_pull_request_activity(self, workspace: str, name: str, id: int) -> Dict:
         # WIP Implement pagination
-        response = self._get(f"/repositories/{workspace}/{name}/pullrequests/{id}/activity")
+        response = self._get(
+            f"/repositories/{workspace}/{name}/pullrequests/{id}/activity"
+        )
 
         return json.loads(response.content)
