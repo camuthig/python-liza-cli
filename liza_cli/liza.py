@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+from enum import Enum
 from typing import Dict, Optional, List, Any
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -8,6 +10,7 @@ import typer
 
 from liza_cli.bitbucket import BitBucket
 from liza_cli.config import Config, Repository, PullRequest, User, Update, ActivityType
+from liza_cli.formatters import PlainFormatter, Formatter, TableFormatter, JsonFormatter
 
 app = typer.Typer()
 
@@ -169,6 +172,38 @@ def update():
     typer.secho("Update complete", fg=typer.colors.GREEN)
 
     write_config()
+
+
+class Format(str, Enum):
+    JSON = 'json'
+    PLAIN = 'plain'
+    TABLE = 'table'
+
+
+@app.command()
+def updates(count: bool = False, output_format: Format = Format.PLAIN):
+    if count:
+        t = 0
+        for repository in state.config.repositories.values():
+            for pull_request in repository.pull_requests.values():
+                t += len(pull_request.updates)
+
+        typer.secho(t)
+        return
+
+    def get_formatter() -> Formatter:
+        # WIP Implement the formatters
+        formatters = {
+            Format.PLAIN: PlainFormatter,
+            Format.JSON: JsonFormatter,
+            Format.TABLE: TableFormatter,
+        }
+
+        return formatters[output_format]()
+
+    formatter = get_formatter()
+
+    formatter.format_updates(list(state.config.repositories.values()))
 
 
 @app.callback()
