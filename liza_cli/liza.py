@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Dict, Optional, List, Any
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 import typer
@@ -116,6 +116,20 @@ def unwatch(workspace: str, name: str):
     typer.secho(f"You are no longer watching {workspace}/{name}", fg=typer.colors.GREEN)
 
 
+def update_watched_pulled_requests():
+    for repository in state.config.repositories.values():
+        updated = {}
+        pull_request_page = state.client.get_assigned_and_authored_pull_requests(*repository.name.split("/"))
+        for pull_request in pull_request_page["values"]:
+            p = PullRequest.parse_obj(pull_request)
+            if p.id in repository.pull_requests:
+                updated[p.id] = repository.pull_requests.get(p.id)
+            else:
+                updated[p.id] = p
+
+        repository.pull_requests = updated
+
+
 def update_pull_requests(repository: Repository):
     date_keys = {
         "approval": "date",
@@ -145,7 +159,7 @@ def update_pull_requests(repository: Repository):
 
             update_author = User.parse_obj(data[user_keys[activity_type]])
             if update_author.uuid == state.config.user_uuid:
-                # Ignore updates from ourselves
+                # Ignore changes from ourselves
                 continue
 
             if (
@@ -162,16 +176,17 @@ def update_pull_requests(repository: Repository):
                     author=update_author,
                 )
             )
-            pull_request.has_updates = True
 
         pull_request.updates = updates
-        pull_request.mark_read()
+        pull_request.mark_updated()
 
 
 @app.command()
 def update():
     if not state.client:
         return not_logged_in()
+
+    update_watched_pulled_requests()
 
     for repository in state.config.repositories.values():
         update_pull_requests(repository)
@@ -199,7 +214,6 @@ def updates(count: bool = False, output_format: Format = Format.PLAIN):
         return
 
     def get_formatter() -> Formatter:
-        # WIP Implement the formatters
         formatters = {
             Format.PLAIN: PlainFormatter,
             Format.JSON: JsonFormatter,

@@ -1,13 +1,16 @@
 import abc
 import json
-
 import typer
 
+from datetime import datetime, timezone
 from tabulate import tabulate
 from typing import List
 
 from liza_cli.config import Repository
 
+
+def format_time(d: datetime) -> str:
+    return d.replace(tzinfo=timezone.utc).astimezone(tz=None).strftime("%Y-%m-%dT%H:%M")
 
 class Formatter(metaclass=abc.ABCMeta):
     @abc.abstractmethod
@@ -21,14 +24,16 @@ class TabulatorFormatter(Formatter, metaclass=abc.ABCMeta):
         data = []
         for repository in repositories:
             for pull_request in repository.pull_requests.values():
-                workspace, name = repository.name.split("/")
-
                 title = pull_request.title
                 if len(title) > 35:
                     title = title[:35] + "..."
 
+                number_of_updates = 0
+                if pull_request.has_unread_updates():
+                    number_of_updates = len(pull_request.updates)
+
                 # WIP capture the link for each pull request
-                data.append([workspace, name, title, len(pull_request.updates), ""])
+                data.append([repository.name, title, number_of_updates, format_time(pull_request.last_updated), format_time(pull_request.last_read), ""])
 
         return data
 
@@ -43,7 +48,7 @@ class PlainFormatter(TabulatorFormatter):
 class TableFormatter(TabulatorFormatter):
     @staticmethod
     def _print_updates_header() -> List[str]:
-        return ["workspace", "repository", "pull request", "# of updates", "link"]
+        return ["repository", "pull request", "# of updates", "last updated", "last read", "link"]
 
     def format_updates(self, repositories: List[Repository]):
         typer.secho(
@@ -61,16 +66,18 @@ class JsonFormatter(Formatter):
 
         for repository in repositories:
             for pull_request in repository.pull_requests.values():
-                workspace, name = repository.name.split("/")
-
                 title = pull_request.title
+                number_of_updates = 0
+                if pull_request.has_unread_updates():
+                    number_of_updates = len(pull_request.updates)
 
                 # WIP capture the link for each pull request
                 datum = {
-                    "workspace": workspace,
-                    "name": name,
+                    "repository": repository.name,
                     "pull_request": title,
-                    "number_of_updates": len(pull_request.updates),
+                    "number_of_updates": number_of_updates,
+                    "last_updated": format_time(pull_request.last_updated),
+                    "last_read": format_time(pull_request.last_read),
                     "link": "",
                 }
                 data.append(datum)

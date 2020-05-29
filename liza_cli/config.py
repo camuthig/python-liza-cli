@@ -36,13 +36,22 @@ class PullRequest(BaseModel):
     author: User
     updates: List[Update] = []
     last_read: datetime = datetime.now(timezone.utc)
-    has_updates: bool = False
+    last_updated: datetime = datetime.now(timezone.utc)
 
     def is_authored_by(self, uuid: str) -> bool:
         return uuid == self.author.uuid
 
     def mark_read(self):
         self.last_read = datetime.now(timezone.utc)
+
+    def mark_updated(self):
+        self.last_updated = datetime.now(timezone.utc)
+
+    def has_unread_updates(self):
+        if self.last_read > self.last_updated:
+            return False
+
+        return len(self.updates) > 0
 
 
 class Repository(BaseModel):
