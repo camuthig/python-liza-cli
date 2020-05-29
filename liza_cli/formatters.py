@@ -16,13 +16,11 @@ class Formatter(metaclass=abc.ABCMeta):
 
 
 class TabulatorFormatter(Formatter, metaclass=abc.ABCMeta):
-    def get_data(self, repositories: List[Repository]) -> List[List[str]]:
+    @staticmethod
+    def get_data(repositories: List[Repository]) -> List[List[str]]:
         data = []
         for repository in repositories:
             for pull_request in repository.pull_requests.values():
-                if len(pull_request.updates) == 0:
-                    continue
-
                 workspace, name = repository.name.split("/")
 
                 title = pull_request.title
@@ -63,9 +61,6 @@ class JsonFormatter(Formatter):
 
         for repository in repositories:
             for pull_request in repository.pull_requests.values():
-                if len(pull_request.updates) == 0:
-                    continue
-
                 workspace, name = repository.name.split("/")
 
                 title = pull_request.title
