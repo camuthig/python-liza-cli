@@ -80,15 +80,13 @@ def watch(workspace: str, name: str):
 
     repository = state.client.get_repository(workspace, name)
 
-    r = Repository(
-        name=repository["full_name"], uuid=repository["uuid"], last_read=datetime.now(),
-    )
+    r = Repository(name=repository["full_name"], uuid=repository["uuid"])
 
     if r.name in state.config.repositories.keys():
         typer.secho(f"You are already watching {workspace}/{name}")
         return
 
-    pull_request_page = state.client.get_assigned_pull_requests(workspace, name)
+    pull_request_page = state.client.get_assigned_and_authored_pull_requests(workspace, name)
     for pull_request in pull_request_page["values"]:
         p = PullRequest.parse_obj(pull_request)
         r.pull_requests[p.id] = p

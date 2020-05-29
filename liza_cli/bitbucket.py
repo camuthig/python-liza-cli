@@ -33,11 +33,11 @@ class BitBucket:
 
         return json.loads(response.content)
 
-    def get_assigned_pull_requests(self, workspace: str, name: str) -> Dict:
+    def get_assigned_and_authored_pull_requests(self, workspace: str, name: str) -> Dict:
         # WIP Implement pagination
         params = {
             "pagelen": 25,
-            "q": f'state="OPEN" AND reviewers.uuid="{self.user_uuid}"',
+            "q": f'state="OPEN" AND (author.uuid="{self.user_uuid}" OR reviewers.uuid="{self.user_uuid}")',
             "state": "OPEN",
         }
         response = self._get(
