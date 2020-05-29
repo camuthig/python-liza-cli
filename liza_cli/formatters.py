@@ -12,6 +12,7 @@ from liza_cli.config import Repository
 def format_time(d: datetime) -> str:
     return d.replace(tzinfo=timezone.utc).astimezone(tz=None).strftime("%Y-%m-%dT%H:%M")
 
+
 class Formatter(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def format_updates(self, repositories: List[Repository]):
@@ -33,7 +34,16 @@ class TabulatorFormatter(Formatter, metaclass=abc.ABCMeta):
                     number_of_updates = len(pull_request.updates)
 
                 # WIP capture the link for each pull request
-                data.append([repository.name, title, number_of_updates, format_time(pull_request.last_updated), format_time(pull_request.last_read), ""])
+                data.append(
+                    [
+                        repository.name,
+                        title,
+                        number_of_updates,
+                        format_time(pull_request.last_updated),
+                        format_time(pull_request.last_read),
+                        "",
+                    ]
+                )
 
         return data
 
@@ -48,7 +58,14 @@ class PlainFormatter(TabulatorFormatter):
 class TableFormatter(TabulatorFormatter):
     @staticmethod
     def _print_updates_header() -> List[str]:
-        return ["repository", "pull request", "# of updates", "last updated", "last read", "link"]
+        return [
+            "repository",
+            "pull request",
+            "# of updates",
+            "last updated",
+            "last read",
+            "link",
+        ]
 
     def format_updates(self, repositories: List[Repository]):
         typer.secho(

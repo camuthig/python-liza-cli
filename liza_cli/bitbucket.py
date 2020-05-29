@@ -33,7 +33,9 @@ class BitBucket:
 
         return json.loads(response.content)
 
-    def get_assigned_and_authored_pull_requests(self, workspace: str, name: str) -> Dict:
+    def get_assigned_and_authored_pull_requests(
+        self, workspace: str, name: str
+    ) -> Dict:
         # WIP Implement pagination
         params = {
             "pagelen": 25,

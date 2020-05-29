@@ -86,7 +86,9 @@ def watch(workspace: str, name: str):
         typer.secho(f"You are already watching {workspace}/{name}")
         return
 
-    pull_request_page = state.client.get_assigned_and_authored_pull_requests(workspace, name)
+    pull_request_page = state.client.get_assigned_and_authored_pull_requests(
+        workspace, name
+    )
     for pull_request in pull_request_page["values"]:
         p = PullRequest.parse_obj(pull_request)
         r.pull_requests[p.id] = p
@@ -119,7 +121,9 @@ def unwatch(workspace: str, name: str):
 def update_watched_pulled_requests():
     for repository in state.config.repositories.values():
         updated = {}
-        pull_request_page = state.client.get_assigned_and_authored_pull_requests(*repository.name.split("/"))
+        pull_request_page = state.client.get_assigned_and_authored_pull_requests(
+            *repository.name.split("/")
+        )
         for pull_request in pull_request_page["values"]:
             p = PullRequest.parse_obj(pull_request)
             if p.id in repository.pull_requests:
