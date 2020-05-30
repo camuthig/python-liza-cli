@@ -5,12 +5,15 @@ description = "A BitBucket PR tracking CLI"
 authors = ["Chris Muthig <camuthig@gmail.com>"]
 license = "MIT"
 
+[tool.poetry.scripts]
+liza = "liza_cli.liza:app"
+
 [tool.poetry.dependencies]
 python = "^3.8"
-typer-cli = "^0.0.9"
 httpx = "^0.12.1"
 pydantic = "^1.5.1"
 tabulate = "^0.8.7"
+typer = "^0.2.1"
 
 [tool.poetry.dev-dependencies]
 black = "^19.10b0"
