@@ -31,9 +31,13 @@ class Update(BaseModel):
 
 
 class PullRequest(BaseModel):
+    class Links(BaseModel):
+        html: Link
+
     id: int
     title: str = ""
     author: User
+    links: Links
     updates: List[Update] = []
     last_read: datetime = datetime.now(timezone.utc)
     last_updated: datetime = datetime.now(timezone.utc)

@@ -33,7 +33,6 @@ class TabulatorFormatter(Formatter, metaclass=abc.ABCMeta):
                 if pull_request.has_unread_updates():
                     number_of_updates = len(pull_request.updates)
 
-                # WIP capture the link for each pull request
                 data.append(
                     [
                         repository.name,
@@ -41,7 +40,7 @@ class TabulatorFormatter(Formatter, metaclass=abc.ABCMeta):
                         number_of_updates,
                         format_time(pull_request.last_updated),
                         format_time(pull_request.last_read),
-                        "",
+                        pull_request.links.html.href,
                     ]
                 )
 
@@ -88,14 +87,13 @@ class JsonFormatter(Formatter):
                 if pull_request.has_unread_updates():
                     number_of_updates = len(pull_request.updates)
 
-                # WIP capture the link for each pull request
                 datum = {
                     "repository": repository.name,
                     "pull_request": title,
                     "number_of_updates": number_of_updates,
                     "last_updated": format_time(pull_request.last_updated),
                     "last_read": format_time(pull_request.last_read),
-                    "link": "",
+                    "link": pull_request.links.html.href,
                 }
                 data.append(datum)
 
