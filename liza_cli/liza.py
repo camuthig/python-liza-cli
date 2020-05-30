@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Dict, Optional, List, Any
+from typing import Optional, List
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -206,10 +206,17 @@ class Format(str, Enum):
 
 
 @app.command()
-def updates(count: bool = False, output_format: Format = Format.PLAIN):
+def updates(
+    count: bool = False,
+    repository_name: Optional[str] = typer.Option(None, "--name", "-n"),
+    output_format: Format = Format.PLAIN,
+):
     if count:
         t = 0
         for repository in state.config.repositories.values():
+            if repository_name and repository_name != repository.name:
+                continue
+
             for pull_request in repository.pull_requests.values():
                 t += len(pull_request.updates)
 
@@ -227,7 +234,11 @@ def updates(count: bool = False, output_format: Format = Format.PLAIN):
 
     formatter = get_formatter()
 
-    formatter.format_updates(list(state.config.repositories.values()))
+    rs = state.config.repositories.values()
+    if repository_name:
+        rs = [r for r in rs if repository_name == r.name]
+
+    formatter.format_updates(rs)
 
 
 @app.callback()
