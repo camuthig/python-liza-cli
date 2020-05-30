@@ -213,7 +213,7 @@ def updates(count: bool = False, output_format: Format = Format.PLAIN):
             for pull_request in repository.pull_requests.values():
                 t += len(pull_request.updates)
 
-        typer.secho(t)
+        typer.echo(t)
         return
 
     def get_formatter() -> Formatter:
