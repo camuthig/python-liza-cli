@@ -10,7 +10,6 @@ import typer
 
 from liza_cli.bitbucket import BitBucket
 from liza_cli.config import Config, Repository, PullRequest, User, Update, ActivityType
-from liza_cli.formatters import PlainFormatter, Formatter, TableFormatter, JsonFormatter
 
 app = typer.Typer()
 
@@ -223,6 +222,7 @@ def updates(
         typer.echo(t)
         return
 
+    from liza_cli.formatters import PlainFormatter, Formatter, TableFormatter, JsonFormatter
     def get_formatter() -> Formatter:
         formatters = {
             Format.PLAIN: PlainFormatter,
@@ -254,7 +254,6 @@ def main(config: Path = typer.Option(default=Path(Path.home(), ".liza"))):
         state.client = BitBucket(
             state.config.username, state.config.token, state.config.user_uuid
         )
-
 
 if __name__ == "__main__":
     app()
