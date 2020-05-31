@@ -46,6 +46,21 @@ def create_default_config():
 
 @app.command()
 def credentials(username: str, token: str):
+    """
+    Configure the credentials for your user.
+
+    Liza uses an app password to access BitBucket. You can create the password here:
+
+    https://bitbucket.org/account/settings/app-passwords/
+
+    Liza needs access to:
+
+        - Account read
+
+        - Repositories read
+
+        - Pull requests read
+    """
     client = BitBucket(username, token, user_uuid=None)
     user = client.get_user()
     if user is None:
@@ -62,6 +77,11 @@ def credentials(username: str, token: str):
 
 @app.command()
 def reset():
+    """
+    Reset your Liza application
+
+    This will delete all configurations including watched repositories and credentials.
+    """
     delete = typer.confirm("This will delete all data. Are you sure?")
     if delete:
         state.config_file.unlink()
@@ -71,12 +91,18 @@ def reset():
 
 @app.command()
 def watched():
+    """
+    List the repositories that you are currently watching
+    """
     for r in state.config.repositories.values():
         typer.echo(r.name)
 
 
 @app.command()
 def watch(workspace: str, name: str):
+    """
+    Add a new repository to your watched list.
+    """
     if not state.client:
         not_logged_in()
 
@@ -104,6 +130,9 @@ def watch(workspace: str, name: str):
 
 @app.command()
 def unwatch(workspace: str, name: str):
+    """
+    Remove a repository from your watched list.
+    """
     if not state.client:
         not_logged_in()
 
@@ -188,6 +217,9 @@ def update_pull_requests(repository: Repository):
 
 @app.command()
 def update():
+    """
+    Read the latest activity information from BitBucket for all watched repositories
+    """
     if not state.client:
         not_logged_in()
 
@@ -209,10 +241,15 @@ class Format(str, Enum):
 
 @app.command()
 def updates(
-    count: bool = False,
-    repository_name: Optional[str] = typer.Option(None, "--name", "-n"),
+    count: bool = typer.Option(
+        False, "--count", "-c", help="Only the count of updates"
+    ),
+    repository_name: Optional[str] = typer.Option(None, "--repository", "-r"),
     output_format: Format = Format.PLAIN,
 ):
+    """
+    List all active pull requests and see which have updates.
+    """
     if count:
         t = 0
         for repository in state.config.repositories.values():
@@ -318,6 +355,10 @@ def paginate_or_select_pull_requests(
 
 @app.command()
 def read(repository: Optional[str] = None, id: Optional[int] = None):
+    """
+    Mark a pull request as read.
+    """
+
     def mark_read(pull_request: PullRequest):
         pull_request.mark_read()
         write_config()
@@ -327,6 +368,10 @@ def read(repository: Optional[str] = None, id: Optional[int] = None):
 
 @app.command()
 def unread(repository: Optional[str] = None, id: Optional[int] = None):
+    """
+    Mark a pull request as unread.
+    """
+
     def mark_read(pull_request: PullRequest):
         reset_date = pull_request.last_updated - timedelta(minutes=1)
         pull_request.mark_read(reset_date)
@@ -337,6 +382,10 @@ def unread(repository: Optional[str] = None, id: Optional[int] = None):
 
 @app.command(name="open")
 def open_pr(repository: Optional[str] = None, id: Optional[int] = None):
+    """
+    Open a pull request in the browser and mark it as read.
+    """
+
     def open_and_mark_read(pull_request: PullRequest):
         import webbrowser
 
