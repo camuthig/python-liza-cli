@@ -33,15 +33,21 @@ class BitBucket:
 
         return json.loads(response.content)
 
-    def get_repository(self, workspace: str, name: str) -> Dict:
-        response = self._get(f"/repositories/{workspace}/{name}")
+    def get_repository(self, name: str) -> Dict:
+        """
+        :param name:  The full repository name, including the organization. E.g. "camuthig/test_repo"
+        :return:
+        """
+        response = self._get(f"/repositories/{name}")
 
         return json.loads(response.content)
 
-    def get_assigned_and_authored_pull_requests(
-        self, workspace: str, name: str
-    ) -> Iterator[Dict]:
-        url = f"/repositories/{workspace}/{name}/pullrequests"
+    def get_assigned_and_authored_pull_requests(self, name: str) -> Iterator[Dict]:
+        """
+        :param name:  The full repository name, including the organization. E.g. "camuthig/test_repo"
+        :return:
+        """
+        url = f"/repositories/{name}/pullrequests"
         params = {
             "pagelen": 25,
             "q": f'state="OPEN" AND (author.uuid="{self.user_uuid}" OR reviewers.uuid="{self.user_uuid}")',
@@ -57,10 +63,13 @@ class BitBucket:
 
             url = data.get("next", None)
 
-    def get_pull_request_activity(
-        self, workspace: str, name: str, id: int
-    ) -> Iterator[Dict]:
-        url = f"/repositories/{workspace}/{name}/pullrequests/{id}/activity"
+    def get_pull_request_activity(self, name: str, id: int) -> Iterator[Dict]:
+        """
+        :param name:  The full repository name, including the organization. E.g. "camuthig/test_repo"
+        :param id: The ID of the pull request in the repository
+        :return:
+        """
+        url = f"/repositories/{name}/pullrequests/{id}/activity"
         while url is not None:
             response = self._get(url, params={"pagelen": 50})
 

@@ -99,24 +99,25 @@ def watched():
 
 
 @app.command()
-def watch(workspace: str, name: str):
+def watch(repository_name: str = typer.Argument(..., metavar="name")):
     """
     Add a new repository to your watched list.
     """
     if not state.client:
         not_logged_in()
 
-    repository = state.client.get_repository(workspace, name)
+    if repository_name in state.config.repositories.keys():
+        typer.secho(f"You are already watching {repository_name}")
+        return
+
+    repository = state.client.get_repository(repository_name)
 
     r = Repository(name=repository["full_name"], uuid=repository["uuid"])
 
-    if r.name in state.config.repositories.keys():
-        typer.secho(f"You are already watching {workspace}/{name}")
-        return
-
     pull_requests = state.client.get_assigned_and_authored_pull_requests(
-        workspace, name
+        repository_name
     )
+
     for pull_request in pull_requests:
         p = PullRequest.parse_obj(pull_request)
         r.pull_requests[p.id] = p
@@ -125,35 +126,33 @@ def watch(workspace: str, name: str):
 
     write_config()
 
-    typer.secho(f"You are now watching {workspace}/{name}", fg=typer.colors.GREEN)
+    typer.secho(f"You are now watching {repository_name}", fg=typer.colors.GREEN)
 
 
 @app.command()
-def unwatch(workspace: str, name: str):
+def unwatch(repository_name: str = typer.Argument(..., metavar="name")):
     """
     Remove a repository from your watched list.
     """
     if not state.client:
         not_logged_in()
 
-    full_name = f"{workspace}/{name}"
-
-    if full_name not in state.config.repositories.keys():
-        typer.secho(f"You are not watching {workspace}/{name}")
+    if repository_name not in state.config.repositories.keys():
+        typer.secho(f"You are not watching {repository_name}")
         return
 
-    del state.config.repositories[full_name]
+    del state.config.repositories[repository_name]
 
     write_config()
 
-    typer.secho(f"You are no longer watching {workspace}/{name}", fg=typer.colors.GREEN)
+    typer.secho(f"You are no longer watching {repository_name}", fg=typer.colors.GREEN)
 
 
 def update_watched_pulled_requests():
     for repository in state.config.repositories.values():
         updated = {}
         pull_requests = state.client.get_assigned_and_authored_pull_requests(
-            *repository.name.split("/")
+            repository.name
         )
         for pull_request in pull_requests:
             p = PullRequest.parse_obj(pull_request)
@@ -179,7 +178,7 @@ def update_pull_requests(repository: Repository):
     }
     for pull_request in repository.pull_requests.values():
         activities = state.client.get_pull_request_activity(
-            *repository.name.split("/"), pull_request.id
+            repository.name, pull_request.id
         )
         updates: List[Update] = []
         for activity in activities:
