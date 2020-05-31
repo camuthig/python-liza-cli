@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from tabulate import tabulate
 from typing import List
 
-from liza_cli.config import Repository
+from liza_cli.config import PullRequestWithRepository
 
 
 def format_time(d: datetime) -> str:
@@ -15,42 +15,41 @@ def format_time(d: datetime) -> str:
 
 class Formatter(metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def format_updates(self, repositories: List[Repository]):
+    def format_updates(self, pull_requests: List[PullRequestWithRepository]):
         raise NotImplementedError
 
 
 class TabulatorFormatter(Formatter, metaclass=abc.ABCMeta):
     @staticmethod
-    def get_data(repositories: List[Repository]) -> List[List[str]]:
+    def get_data(pull_requests: List[PullRequestWithRepository]) -> List[List[str]]:
         data = []
-        for repository in repositories:
-            for pull_request in repository.pull_requests.values():
-                title = pull_request.title
-                if len(title) > 35:
-                    title = title[:35] + "..."
+        for pull_request in pull_requests:
+            title = pull_request.title
+            if len(title) > 35:
+                title = title[:35] + "..."
 
-                number_of_updates = 0
-                if pull_request.has_unread_updates():
-                    number_of_updates = len(pull_request.updates)
+            number_of_updates = 0
+            if pull_request.has_unread_updates():
+                number_of_updates = len(pull_request.updates)
 
-                data.append(
-                    [
-                        repository.name,
-                        title,
-                        number_of_updates,
-                        format_time(pull_request.last_updated),
-                        format_time(pull_request.last_read),
-                        pull_request.links.html.href,
-                    ]
-                )
+            data.append(
+                [
+                    pull_request.repository.name,
+                    title,
+                    number_of_updates,
+                    format_time(pull_request.last_updated),
+                    format_time(pull_request.last_read),
+                    pull_request.links.html.href,
+                ]
+            )
 
         return data
 
 
 class PlainFormatter(TabulatorFormatter):
-    def format_updates(self, repositories: List[Repository]):
+    def format_updates(self, pull_requests: List[PullRequestWithRepository]):
         typer.secho(
-            tabulate(tabular_data=self.get_data(repositories), tablefmt="plain")
+            tabulate(tabular_data=self.get_data(pull_requests), tablefmt="plain")
         )
 
 
@@ -66,10 +65,10 @@ class TableFormatter(TabulatorFormatter):
             "link",
         ]
 
-    def format_updates(self, repositories: List[Repository]):
+    def format_updates(self, pull_requests: List[PullRequestWithRepository]):
         typer.secho(
             tabulate(
-                tabular_data=self.get_data(repositories),
+                tabular_data=self.get_data(pull_requests),
                 headers=self._print_updates_header(),
                 tablefmt="github",
             )
@@ -77,24 +76,18 @@ class TableFormatter(TabulatorFormatter):
 
 
 class JsonFormatter(Formatter):
-    def format_updates(self, repositories: List[Repository]):
+    def format_updates(self, pull_requests: List[PullRequestWithRepository]):
         data = []
 
-        for repository in repositories:
-            for pull_request in repository.pull_requests.values():
-                title = pull_request.title
-                number_of_updates = 0
-                if pull_request.has_unread_updates():
-                    number_of_updates = len(pull_request.updates)
-
-                datum = {
-                    "repository": repository.name,
-                    "pull_request": title,
-                    "number_of_updates": number_of_updates,
-                    "last_updated": format_time(pull_request.last_updated),
-                    "last_read": format_time(pull_request.last_read),
-                    "link": pull_request.links.html.href,
-                }
-                data.append(datum)
+        for pull_request in pull_requests:
+            datum = {
+                "repository": pull_request.repository.name,
+                "pull_request": pull_request.title,
+                "number_of_updates": len(pull_request.unread_updates()),
+                "last_updated": format_time(pull_request.last_updated),
+                "last_read": format_time(pull_request.last_read),
+                "link": pull_request.links.html.href,
+            }
+            data.append(datum)
 
         typer.secho(json.dumps(data, indent=4))

@@ -280,11 +280,18 @@ def updates(
 
     formatter = get_formatter()
 
-    rs = state.config.repositories.values()
     if repository_name:
-        rs = [r for r in rs if repository_name == r.name]
+        r = state.config.repositories.get(repository_name)
+        if r is None:
+            raise err(f"Not watching repository {repository_name}")
 
-    formatter.format_updates(rs)
+        prs = r.pull_requests_with_repository()
+    else:
+        prs = state.config.pull_requests_with_repository()
+
+    prs.sort(key = lambda x: (-len(x.unread_updates()), x.repository.name, x.id))
+
+    formatter.format_updates(prs)
 
 
 def paginate_or_select_pull_requests(
@@ -316,6 +323,7 @@ def paginate_or_select_pull_requests(
     else:
         prs = state.config.pull_requests_with_repository()
 
+    prs.sort(key = lambda x: (-len(x.unread_updates()), x.repository.name, x.id))
     size = 10
     pages = [prs[i : i + size] for i in range(0, len(prs), size)]
     for offset, page in enumerate(pages):

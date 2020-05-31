@@ -51,11 +51,14 @@ class PullRequest(BaseModel):
     def mark_updated(self):
         self.last_updated = datetime.now(timezone.utc)
 
-    def has_unread_updates(self):
+    def unread_updates(self):
         if self.last_read > self.last_updated:
-            return False
+            return []
 
-        return len(self.updates) > 0
+        return self.updates
+
+    def has_unread_updates(self):
+        return len(self.unread_updates()) > 0
 
 
 class Repository(BaseModel):
