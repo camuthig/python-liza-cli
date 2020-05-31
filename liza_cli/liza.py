@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional, List
+from typing import Optional, List, Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import typer
@@ -24,9 +24,13 @@ class State:
 state = State()
 
 
+def err(message: str, code: Optional[int] = 1):
+    typer.secho(message, fg=typer.colors.RED, err=True)
+    return typer.Exit(code)
+
+
 def not_logged_in():
-    typer.secho("You must configure credentials first.", fg=typer.colors.RED, err=True)
-    return 1
+    raise err("You must configure credentials first.")
 
 
 def write_config():
@@ -45,8 +49,7 @@ def credentials(username: str, token: str):
     client = BitBucket(username, token, user_uuid=None)
     user = client.get_user()
     if user is None:
-        typer.secho("Invalid login credentials", fg=typer.colors.RED)
-        return
+        raise err("Invalid login credentials")
 
     state.config.user_uuid = user["uuid"]
     state.config.token = token
@@ -75,7 +78,7 @@ def watched():
 @app.command()
 def watch(workspace: str, name: str):
     if not state.client:
-        return not_logged_in()
+        not_logged_in()
 
     repository = state.client.get_repository(workspace, name)
 
@@ -102,7 +105,7 @@ def watch(workspace: str, name: str):
 @app.command()
 def unwatch(workspace: str, name: str):
     if not state.client:
-        return not_logged_in()
+        not_logged_in()
 
     full_name = f"{workspace}/{name}"
 
@@ -186,7 +189,7 @@ def update_pull_requests(repository: Repository):
 @app.command()
 def update():
     if not state.client:
-        return not_logged_in()
+        not_logged_in()
 
     update_watched_pulled_requests()
 
@@ -217,12 +220,19 @@ def updates(
                 continue
 
             for pull_request in repository.pull_requests.values():
-                t += len(pull_request.updates)
+                if pull_request.has_unread_updates():
+                    t += len(pull_request.updates)
 
         typer.echo(t)
         return
 
-    from liza_cli.formatters import PlainFormatter, Formatter, TableFormatter, JsonFormatter
+    from liza_cli.formatters import (
+        PlainFormatter,
+        Formatter,
+        TableFormatter,
+        JsonFormatter,
+    )
+
     def get_formatter() -> Formatter:
         formatters = {
             Format.PLAIN: PlainFormatter,
@@ -241,6 +251,102 @@ def updates(
     formatter.format_updates(rs)
 
 
+def paginate_or_select_pull_requests(
+    repository: Optional[str], id: Optional[int], action: Callable[[PullRequest], None],
+):
+    if id is not None and repository is None:
+        raise err(f"You must include a repository when providing a pull request ID")
+
+    if id is not None:
+        r = state.config.repositories.get(repository)
+        if r is None:
+            raise err(f"Not watching repository {repository}")
+
+        pr = r.pull_requests.get(id)
+        if pr is None:
+            raise err(
+                f"Could not find a pull request with id {id} for repository {repository}"
+            )
+
+        action(pr)
+        return
+
+    if repository is not None:
+        r = state.config.repositories.get(repository)
+        if r is None:
+            raise err(f"Not watching repository {repository}")
+
+        prs = r.pull_requests_with_repository()
+    else:
+        prs = state.config.pull_requests_with_repository()
+
+    size = 10
+    pages = [prs[i : i + size] for i in range(0, len(prs), size)]
+    for offset, page in enumerate(pages):
+        for i, data in enumerate(page):
+            number = typer.style(f"[{i}]", fg=typer.colors.WHITE)
+            number_of_updates = typer.style("(0 updates)", fg=typer.colors.GREEN)
+            if data.has_unread_updates():
+                number_of_updates = typer.style(
+                    f"({len(data.updates)} updates)", fg=typer.colors.BRIGHT_RED
+                )
+            info = typer.style(
+                f"{data.repository.name}:{data.id} - {data.title}",
+                fg=typer.colors.WHITE,
+            )
+            typer.echo(f"  {number} {number_of_updates} {info}")
+
+        choice = typer.prompt(f"Choose a pull request (0-{len(page)-1}, n)")
+
+        if choice == "n":
+            continue
+
+        try:
+            choice = int(choice)
+        except ValueError:
+            raise err(f"Invalid selection")
+
+        if choice >= size or choice < 0:
+            raise err(f"{choice} is an invalid selection")
+
+        choice = page[choice]
+
+        pr = state.config.repositories[choice.repository.name].pull_requests[choice.id]
+        action(pr)
+        return
+
+
+@app.command()
+def read(repository: Optional[str] = None, id: Optional[int] = None):
+    def mark_read(pull_request: PullRequest):
+        pull_request.mark_read()
+        write_config()
+
+    paginate_or_select_pull_requests(repository, id, mark_read)
+
+
+@app.command()
+def unread(repository: Optional[str] = None, id: Optional[int] = None):
+    def mark_read(pull_request: PullRequest):
+        reset_date = pull_request.last_updated - timedelta(minutes=1)
+        pull_request.mark_read(reset_date)
+        write_config()
+
+    paginate_or_select_pull_requests(repository, id, mark_read)
+
+
+@app.command(name="open")
+def open_pr(repository: Optional[str] = None, id: Optional[int] = None):
+    def open_and_mark_read(pull_request: PullRequest):
+        import webbrowser
+
+        webbrowser.open(pull_request.links.html.href)
+        pull_request.mark_read()
+        write_config()
+
+    paginate_or_select_pull_requests(repository, id, open_and_mark_read)
+
+
 @app.callback()
 def main(config: Path = typer.Option(default=Path(Path.home(), ".liza"))):
     state.config_file = config
@@ -254,6 +360,7 @@ def main(config: Path = typer.Option(default=Path(Path.home(), ".liza"))):
         state.client = BitBucket(
             state.config.username, state.config.token, state.config.user_uuid
         )
+
 
 if __name__ == "__main__":
     app()

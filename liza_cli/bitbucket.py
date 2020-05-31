@@ -18,6 +18,7 @@ class BitBucket:
         path = path[path.startswith(self.endpoint) and len(self.endpoint) :]
 
         import httpx
+
         return httpx.get(
             f"{self.endpoint}{path}",
             auth=(self.username, self.token),

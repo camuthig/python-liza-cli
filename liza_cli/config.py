@@ -45,8 +45,8 @@ class PullRequest(BaseModel):
     def is_authored_by(self, uuid: str) -> bool:
         return uuid == self.author.uuid
 
-    def mark_read(self):
-        self.last_read = datetime.now(timezone.utc)
+    def mark_read(self, at: datetime = datetime.now(timezone.utc)):
+        self.last_read = at
 
     def mark_updated(self):
         self.last_updated = datetime.now(timezone.utc)
@@ -64,9 +64,27 @@ class Repository(BaseModel):
     pull_requests: Dict[int, PullRequest] = {}
     uuid: str
 
+    def pull_requests_with_repository(self):
+        prs = []
+        for pr in self.pull_requests.values():
+            prs.append(PullRequestWithRepository(**pr.dict(), repository=self))
+
+        return prs
+
+
+class PullRequestWithRepository(PullRequest):
+    repository: Repository
+
 
 class Config(BaseModel):
     token: Optional[str]
     username: Optional[str]
     user_uuid: Optional[str]
     repositories: Dict[str, Repository]
+
+    def pull_requests_with_repository(self) -> List[PullRequestWithRepository]:
+        prs = []
+        for r in self.repositories.values():
+            prs += r.pull_requests_with_repository()
+
+        return prs
