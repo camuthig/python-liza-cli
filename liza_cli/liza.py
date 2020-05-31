@@ -244,7 +244,7 @@ def updates(
         False, "--count", "-c", help="Only the count of updates"
     ),
     repository_name: Optional[str] = typer.Option(None, "--repository", "-r"),
-    output_format: Format = Format.PLAIN,
+    output_format: Format = Format.TABLE,
 ):
     """
     List all active pull requests and see which have updates.
