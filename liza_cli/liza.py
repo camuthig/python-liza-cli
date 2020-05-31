@@ -361,10 +361,15 @@ def paginate_or_select_pull_requests(
 
 
 @app.command()
-def read(repository: Optional[str] = None, id: Optional[int] = None):
+def read(repository: Optional[str] = None, id: Optional[int] = None, all: bool = typer.Option(False, "--all", "-a")):
     """
     Mark a pull request as read.
     """
+    if all:
+        for pr in state.config.pull_requests_with_repository():
+            state.config.repositories[pr.repository.name].pull_requests[pr.id].mark_read()
+        write_config()
+        return
 
     def mark_read(pull_request: PullRequest):
         pull_request.mark_read()
